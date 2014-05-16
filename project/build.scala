@@ -6,8 +6,8 @@ object build extends Build {
     scalaVersion := "2.11.0",
     crossVersion := CrossVersion.full,
     version := "0.1.0-SNAPSHOT",
-    organization := "org.scalareflect",
-    description := "Scala host for Project Palladium",
+    organization := "org.scalamacros",
+    description := "Tracks things that are going on during macro expansion",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
     publishMavenStyle := true,
@@ -17,7 +17,7 @@ object build extends Build {
     parallelExecution in Test := false, // hello, reflection sync!!
     logBuffered := false,
     scalaHome := {
-      val scalaHome = System.getProperty("scalahost.scala.home")
+      val scalaHome = System.getProperty("macrotracker.scala.home")
       if (scalaHome != null) {
         println(s"Going for custom scala home at $scalaHome")
         Some(file(scalaHome))
@@ -54,7 +54,7 @@ object build extends Build {
     },
     pomIncludeRepository := { x => false },
     pomExtra := (
-      <url>https://github.com/scalareflect/scalahost</url>
+      <url>https://github.com/scalamacros/macrotracker</url>
       <inceptionYear>2014</inceptionYear>
       <licenses>
         <license>
@@ -64,12 +64,12 @@ object build extends Build {
         </license>
       </licenses>
       <scm>
-        <url>git://github.com/scalareflect/scalahost.git</url>
-        <connection>scm:git:git://github.com/scalareflect/scalahost.git</connection>
+        <url>git://github.com/scalamacros/macrotracker.git</url>
+        <connection>scm:git:git://github.com/scalamacros/macrotracker.git</connection>
       </scm>
       <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/scalareflect/scalahost/issues</url>
+        <url>https://github.com/scalamacros/macrotracker/issues</url>
       </issueManagement>
     ),
     credentials ++= loadCredentials().toList
@@ -96,10 +96,10 @@ object build extends Build {
       }
     } else {
       for {
-        realm <- sys.env.get("SCALAREFLECT_MAVEN_REALM")
-        domain <- sys.env.get("SCALAREFLECT_MAVEN_DOMAIN")
-        user <- sys.env.get("SCALAREFLECT_MAVEN_USER")
-        password <- sys.env.get("SCALAREFLECT_MAVEN_PASSWORD")
+        realm <- sys.env.get("SCALAMACROS_MAVEN_REALM")
+        domain <- sys.env.get("SCALAMACROS_MAVEN_DOMAIN")
+        user <- sys.env.get("SCALAMACROS_MAVEN_USER")
+        password <- sys.env.get("SCALAMACROS_MAVEN_PASSWORD")
       } yield {
         println("Loading Sonatype credentials from environment variables")
         Credentials(realm, domain, user, password)
@@ -109,7 +109,7 @@ object build extends Build {
 
   lazy val usePluginSettings = Seq(
     scalacOptions in Compile <++= (Keys.`package` in (plugin, Compile)) map { (jar: File) =>
-      System.setProperty("scalahost.plugin.jar", jar.getAbsolutePath)
+      System.setProperty("macrotracker.plugin.jar", jar.getAbsolutePath)
       val addPlugin = "-Xplugin:" + jar.getAbsolutePath
       // Thanks Jason for this cool idea (taken from https://github.com/retronym/boxer)
       // add plugin timestamp to compiler options to trigger recompile of
@@ -123,7 +123,7 @@ object build extends Build {
   // to the compiler.
   lazy val rebuildWhenPluginIsChangedSettings = Seq(
     scalacOptions in Compile <++= (Keys.`package` in (plugin, Compile)) map { (jar: File) =>
-      System.setProperty("scalahost.plugin.jar", jar.getAbsolutePath)
+      System.setProperty("macrotracker.plugin.jar", jar.getAbsolutePath)
       val dummy = "-Jdummy=" + jar.lastModified
       Seq(dummy)
     }
@@ -140,11 +140,12 @@ object build extends Build {
   ) aggregate (plugin, tests)
 
   lazy val plugin = Project(
-    id   = "scalahost",
+    id   = "macrotracker",
     base = file("plugin")
   ) settings (
     publishableSettings: _*
   ) settings (
+    scalaSource in Compile <<= (baseDirectory in Compile)(base => base / "src"),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
     libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
     scalacOptions ++= Seq()
